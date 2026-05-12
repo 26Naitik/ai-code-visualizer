@@ -9,12 +9,22 @@ import {
 } from "react"
 
 import { explainCode } from "./ai"
+import {
+  DEFAULT_SNIPPETS,
+  generateFlowchart,
+  simulateOutput,
+  detectConstructs,
+  estimateComplexity,
+} from "./utils/codeAnalyzer"
 
 import toast, { Toaster } from "react-hot-toast"
 
 import { motion, AnimatePresence } from "framer-motion"
 
 import PageLoader from "@/components/PageLoader"
+import DashboardView from "@/components/views/DashboardView"
+import StatsView from "@/components/views/StatsView"
+import SettingsView from "@/components/views/SettingsView"
 
 import { Button } from "@/components/ui/button"
 
@@ -46,6 +56,7 @@ import {
   X,
   BookmarkPlus,
   Trash2,
+  Terminal,
 } from "lucide-react"
 
 const Landing =
@@ -150,15 +161,7 @@ function readTheme() {
     : "light"
 }
 
-const DEFAULT_EDITOR_CODE =
-`function hello() {
-  console.log("Hello World")
-}
-
-hello()
-`
-
-function readSavedCodeFromStorage() {
+function readSavedCodeFromStorage(lang = "javascript") {
 
   try {
 
@@ -171,7 +174,7 @@ function readSavedCodeFromStorage() {
     /* unavailable */
   }
 
-  return DEFAULT_EDITOR_CODE
+  return DEFAULT_SNIPPETS[lang] ?? DEFAULT_SNIPPETS.javascript
 }
 
 function App() {
@@ -182,8 +185,14 @@ function App() {
   const [language, setLanguage] =
     useState("javascript")
 
-  const [code, setCode] = useState(
-    readSavedCodeFromStorage
+  const [explanationLang, setExplanationLang] =
+    useState("english")
+
+  const [activeView, setActiveView] = useState("editor")
+  const [activeTab, setActiveTab] = useState("explanation")
+
+  const [code, setCode] = useState(() =>
+    readSavedCodeFromStorage("javascript")
   )
 
   const skipInitialSaveRef = useRef(true)
@@ -321,69 +330,32 @@ function App() {
   const [explanation, setExplanation] =
     useState("")
 
+  const [simOutput, setSimOutput] =
+    useState("")
+
   const [loading, setLoading] =
     useState(false)
 
   const [flowchart, setFlowchart] =
-    useState(`
-flowchart TD
-A[Start] --> B[Hello World]
-B --> C[End]
-`)
+    useState(() => generateFlowchart(
+      readSavedCodeFromStorage("javascript"),
+      "javascript"
+    ))
 
   async function handleExplain() {
 
     try {
 
       setLoading(true)
+      setActiveView("editor")
+      setActiveTab("explanation")
 
       const result =
-        await explainCode(code)
+        await explainCode(code, language, explanationLang)
 
       setExplanation(result)
-
-      eval(code)
-
-      if (
-        code.includes("if")
-      ) {
-
-        setFlowchart(`
-flowchart TD
-A[Start]
---> B{Condition}
-B -->|True| C[If Block]
-B -->|False| D[Else Block]
-C --> E[End]
-D --> E
-`)
-      }
-
-      else if (
-        code.includes("for")
-      ) {
-
-        setFlowchart(`
-flowchart TD
-A[Start]
---> B[Initialize Loop]
-B --> C{Condition}
-C -->|True| D[Loop Body]
-D --> B
-C -->|False| E[End]
-`)
-      }
-
-      else {
-
-        setFlowchart(`
-flowchart TD
-A[Start]
---> B[Execute Function]
-B --> C[Print Output]
-C --> D[End]
-`)
-      }
+      setFlowchart(generateFlowchart(code, language))
+      setSimOutput(simulateOutput(code, language))
 
       toast.success(
         "Code analyzed successfully 🚀"
@@ -392,7 +364,7 @@ C --> D[End]
     } catch (error) {
 
       toast.error(
-        "Execution Failed ❌ " +
+        "Analysis Failed ❌ " +
           (error instanceof Error
             ? error.message
             : String(error))
@@ -519,7 +491,8 @@ C --> D[End]
 
       ) : (
 
-    <div className="flex min-h-dvh h-dvh bg-background text-foreground transition-colors duration-300 ease-out lg:h-screen">
+    <div className="flex min-h-dvh h-dvh bg-[#020202] text-foreground transition-colors duration-300 ease-out p-0 sm:p-4 lg:p-6">
+      <div className="flex flex-1 w-full flex-row overflow-hidden rounded-none sm:rounded-[2rem] border-0 sm:border border-white/10 bg-[#0a0a0a]/80 shadow-2xl backdrop-blur-3xl ring-1 ring-white/5">
 
       {/* Mobile sidebar backdrop */}
       {mobileNavOpen ? (
@@ -535,7 +508,7 @@ C --> D[End]
 
       {/* Sidebar — icon rail + saved snippets; overlay on small screens */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 flex h-full min-h-0 w-[min(20rem,calc(100vw-0.5rem))] shrink-0 flex-row border-r border-sidebar-border bg-sidebar text-sidebar-foreground shadow-xl transition-[transform,box-shadow] duration-200 ease-out lg:relative lg:z-auto lg:w-64 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-full min-h-0 w-[min(20rem,calc(100vw-0.5rem))] shrink-0 flex-row border-r border-white/5 bg-black/40 backdrop-blur-2xl text-sidebar-foreground transition-[transform,box-shadow] duration-200 ease-out lg:relative lg:z-auto lg:w-72 lg:shadow-none ${
           mobileNavOpen
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0"
@@ -543,7 +516,7 @@ C --> D[End]
       >
 
         {/* Icon rail */}
-        <div className="flex w-[3.75rem] shrink-0 flex-col items-center gap-3 border-r border-sidebar-border py-3 sm:w-16 sm:gap-4 sm:py-4">
+        <div className="flex w-[3.75rem] shrink-0 flex-col items-center gap-3 border-r border-white/5 py-3 sm:w-16 sm:gap-4 sm:py-6">
 
           <button
             type="button"
@@ -558,52 +531,52 @@ C --> D[End]
 
           <motion.div
             whileHover={{ scale: 1.1 }}
-            className="rounded-2xl bg-blue-500/15 p-2 dark:bg-blue-500/20 sm:p-2.5"
-            onClick={() => setMobileNavOpen(false)}
+            className={`cursor-pointer rounded-2xl p-2 transition-all duration-300 sm:p-2.5 ${activeView === "editor" ? "bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.15)] dark:bg-primary/20" : "hover:bg-sidebar-accent"}`}
+            onClick={() => { setActiveView("editor"); setMobileNavOpen(false); }}
+            title="Editor"
           >
+            <Code2 className={`size-5 transition-colors ${activeView === "editor" ? "text-primary dark:text-primary" : ""}`} />
+          </motion.div>
 
-            <Code2 className="size-5 text-blue-600 dark:text-blue-400" />
-
+          <motion.div
+            whileHover={{ scale: 1.1 }}
+            className={`cursor-pointer rounded-2xl p-2 transition-all duration-300 sm:p-2.5 ${activeView === "dashboard" ? "bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.15)] dark:bg-primary/20" : "hover:bg-sidebar-accent"}`}
+            onClick={() => { setActiveView("dashboard"); setMobileNavOpen(false); }}
+            title="Snippets Dashboard"
+          >
+            <LayoutDashboard className={`size-5 transition-colors ${activeView === "dashboard" ? "text-primary dark:text-primary" : ""}`} />
           </motion.div>
 
           <motion.div
             whileHover={{ scale: 1.1 }}
             className="cursor-pointer rounded-2xl p-2 transition-colors duration-300 hover:bg-sidebar-accent sm:p-2.5"
-            onClick={() => setMobileNavOpen(false)}
+            onClick={() => { 
+              setActiveView("editor"); 
+              setActiveTab("explanation"); 
+              setMobileNavOpen(false); 
+              handleExplainRef.current(); 
+            }}
+            title="Analyze Code"
           >
-
-            <LayoutDashboard className="size-5" />
-
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.1 }}
-            className="cursor-pointer rounded-2xl p-2 transition-colors duration-300 hover:bg-sidebar-accent sm:p-2.5"
-            onClick={() => setMobileNavOpen(false)}
-          >
-
             <BrainCircuit className="size-5" />
-
           </motion.div>
 
           <motion.div
             whileHover={{ scale: 1.1 }}
-            className="cursor-pointer rounded-2xl p-2 transition-colors duration-300 hover:bg-sidebar-accent sm:p-2.5"
-            onClick={() => setMobileNavOpen(false)}
+            className={`cursor-pointer rounded-2xl p-2 transition-all duration-300 sm:p-2.5 ${activeView === "stats" ? "bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.15)] dark:bg-primary/20" : "hover:bg-sidebar-accent"}`}
+            onClick={() => { setActiveView("stats"); setMobileNavOpen(false); }}
+            title="Code Insights"
           >
-
-            <BarChart3 className="size-5" />
-
+            <BarChart3 className={`size-5 transition-colors ${activeView === "stats" ? "text-primary dark:text-primary" : ""}`} />
           </motion.div>
 
           <motion.div
             whileHover={{ scale: 1.1 }}
-            className="cursor-pointer rounded-2xl p-2 transition-colors duration-300 hover:bg-sidebar-accent sm:p-2.5"
-            onClick={() => setMobileNavOpen(false)}
+            className={`cursor-pointer rounded-2xl p-2 transition-all duration-300 sm:p-2.5 ${activeView === "settings" ? "bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.15)] dark:bg-primary/20" : "hover:bg-sidebar-accent"}`}
+            onClick={() => { setActiveView("settings"); setMobileNavOpen(false); }}
+            title="Settings"
           >
-
-            <Settings className="size-5" />
-
+            <Settings className={`size-5 transition-colors ${activeView === "settings" ? "text-primary dark:text-primary" : ""}`} />
           </motion.div>
 
           <motion.button
@@ -701,7 +674,7 @@ C --> D[End]
         </div>
 
         {/* Saved Snippets */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 bg-sidebar/95 p-2 sm:gap-2.5 sm:p-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 bg-transparent p-4 sm:gap-4 sm:p-5">
 
           <div className="shrink-0 space-y-2">
 
@@ -824,7 +797,7 @@ C --> D[End]
         </a>
 
         {/* Navbar */}
-        <div className="flex min-h-14 flex-shrink-0 flex-col gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-xl transition-colors duration-300 sm:min-h-16 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:h-16 lg:py-0">
+        <div className="flex min-h-14 flex-shrink-0 flex-col gap-3 border-b border-white/5 bg-transparent px-4 py-4 sm:min-h-20 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:py-0">
 
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
 
@@ -856,7 +829,16 @@ C --> D[End]
 
           <Select
             value={language}
-            onValueChange={setLanguage}
+            onValueChange={(val) => {
+              setLanguage(val)
+              setCode((prev) => {
+                const trimmed = prev.trim()
+                if (!trimmed || trimmed === DEFAULT_SNIPPETS[language]?.trim()) {
+                  return DEFAULT_SNIPPETS[val] ?? prev
+                }
+                return prev
+              })
+            }}
           >
 
             <SelectTrigger
@@ -890,14 +872,31 @@ C --> D[End]
 
           </Select>
 
+          <Select
+            value={explanationLang}
+            onValueChange={setExplanationLang}
+          >
+            <SelectTrigger
+              aria-label="Explanation Language"
+              className="w-full border-border bg-card transition-colors duration-300 sm:w-[140px] sm:max-w-[140px]"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="english">English</SelectItem>
+              <SelectItem value="hinglish">Hinglish</SelectItem>
+            </SelectContent>
+          </Select>
+
         </div>
 
         {/* Content */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden lg:flex-row lg:overflow-hidden">
+        {activeView === "editor" && (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden lg:flex-row lg:overflow-hidden p-0 sm:p-2 lg:p-4 gap-4">
 
           {/* Editor */}
           <div
-            className="flex h-[min(42vh,22rem)] min-h-[240px] w-full shrink-0 flex-col border-b border-border transition-colors duration-300 sm:h-[min(45vh,26rem)] sm:min-h-[280px] lg:h-full lg:min-h-0 lg:w-1/2 lg:flex-1 lg:border-b-0 lg:border-r"
+            className="flex h-[min(42vh,22rem)] min-h-[240px] w-full shrink-0 flex-col rounded-2xl border border-white/10 bg-black/60 shadow-xl overflow-hidden transition-colors duration-300 sm:h-[min(45vh,26rem)] sm:min-h-[280px] lg:h-full lg:min-h-0 lg:w-1/2 lg:flex-1"
             aria-label="Code editor panel"
           >
 
@@ -926,7 +925,7 @@ C --> D[End]
           <main
             id="main-content"
             tabIndex={-1}
-            className="w-full flex-1 overflow-y-auto p-4 outline-none sm:p-5 lg:w-1/2 lg:p-6"
+            className="w-full flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-[#0a0a0a]/50 p-4 outline-none sm:p-5 lg:w-1/2 lg:p-6"
           >
 
             {/* Hero */}
@@ -959,9 +958,9 @@ C --> D[End]
             </motion.div>
 
             {/* Tabs */}
-            <Tabs defaultValue="explanation">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
 
-              <TabsList className="h-auto max-sm:grid max-sm:w-full max-sm:grid-cols-2 max-sm:gap-1 border border-border bg-muted/80 p-1 transition-colors duration-300 dark:bg-muted/50">
+              <TabsList className="h-auto max-sm:grid max-sm:w-full max-sm:grid-cols-3 max-sm:gap-1 border border-border bg-muted/80 p-1 transition-colors duration-300 dark:bg-muted/50">
 
                 <TabsTrigger
                   value="explanation"
@@ -985,6 +984,19 @@ C --> D[End]
 
                   <span className="truncate">
                     Flowchart
+                  </span>
+
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="output"
+                  className="min-h-10 flex-1 gap-1.5 px-2 text-xs sm:min-h-9 sm:flex-none sm:px-3 sm:text-sm"
+                >
+
+                  <Terminal className="size-4 shrink-0" />
+
+                  <span className="truncate">
+                    Output
                   </span>
 
                 </TabsTrigger>
@@ -1030,6 +1042,30 @@ C --> D[End]
 
               </TabsContent>
 
+              {/* Output */}
+              <TabsContent value="output">
+
+                <div
+                  className="mt-3 min-h-[200px] rounded-xl border border-border bg-zinc-950 p-4 font-mono text-sm leading-relaxed text-green-400 transition-colors duration-300 sm:mt-4 sm:min-h-[250px] sm:rounded-2xl sm:p-5"
+                  role="status"
+                  aria-live="polite"
+                  aria-busy={loading}
+                >
+
+                  <p className="mb-2 text-[11px] uppercase tracking-widest text-zinc-500">
+                    ▶ Simulated Output
+                  </p>
+
+                  <pre className="whitespace-pre-wrap break-words">
+                    {loading
+                      ? "⏳ Running..."
+                      : simOutput || "Click \"Analyze Code\" to see simulated output."}
+                  </pre>
+
+                </div>
+
+              </TabsContent>
+
             </Tabs>
 
             {/* Analyze Button */}
@@ -1052,9 +1088,32 @@ C --> D[End]
           </main>
 
         </div>
+        )}
 
+        {activeView === "dashboard" && (
+          <DashboardView
+            snippets={snippets}
+            loadSnippet={(s) => {
+              loadSnippet(s);
+              setActiveView("editor");
+            }}
+            deleteSnippet={deleteSnippet}
+          />
+        )}
+
+        {activeView === "stats" && <StatsView code={code} />}
+
+        {activeView === "settings" && (
+          <SettingsView
+            theme={theme}
+            setTheme={setTheme}
+            explanationLang={explanationLang}
+            setExplanationLang={setExplanationLang}
+          />
+        )}
       </div>
 
+      </div>
     </div>
 
       )}

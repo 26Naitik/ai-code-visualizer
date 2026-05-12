@@ -136,7 +136,7 @@ function Landing({ onLaunch }) {
 
           <div className="flex items-center gap-2">
 
-            <div className="flex size-9 items-center justify-center rounded-xl border border-border/60 bg-background/40 backdrop-blur-md dark:bg-white/5">
+            <div className="flex size-9 items-center justify-center rounded-xl border border-border/60 bg-background/40 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5 dark:shadow-primary/10">
 
               <Sparkles className="size-4 text-blue-500 dark:text-blue-400" />
 
@@ -233,7 +233,7 @@ function Landing({ onLaunch }) {
 
                 <Button
                   size="lg"
-                  className="h-12 rounded-xl px-8 text-base shadow-lg shadow-blue-500/20 dark:shadow-blue-500/10"
+                  className="h-12 rounded-xl px-8 text-base shadow-lg shadow-blue-500/20 transition-all duration-300 hover:shadow-primary/40 dark:shadow-primary/20 dark:hover:shadow-primary/50"
                   aria-label="Launch app and open the code workspace"
                   onClick={onLaunch}
                 >
@@ -266,7 +266,7 @@ function Landing({ onLaunch }) {
             }}
           >
 
-            <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-background/80 via-background/40 to-background/20 p-px shadow-2xl shadow-black/10 backdrop-blur-2xl dark:from-white/[0.08] dark:via-white/[0.04] dark:to-transparent dark:shadow-black/40">
+            <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-background/80 via-background/40 to-background/20 p-px shadow-2xl shadow-black/10 backdrop-blur-2xl transition-all duration-500 hover:shadow-primary/10 dark:from-white/[0.1] dark:via-white/[0.05] dark:to-transparent dark:shadow-black/60 hover:dark:shadow-primary/20">
 
               <div className="rounded-[15px] bg-background/20 p-6 dark:bg-black/20 sm:p-8">
 
@@ -354,9 +354,9 @@ saveSnippet("my-lib", editor.getValue());`}</code>
               >
 
                 <motion.div
-                  className="group h-full rounded-2xl border border-border/50 bg-background/45 p-5 shadow-lg shadow-black/5 backdrop-blur-xl transition-colors dark:bg-white/[0.05] dark:shadow-black/20"
+                  className="group h-full rounded-2xl border border-border/50 bg-background/45 p-5 shadow-lg shadow-black/5 backdrop-blur-xl transition-all duration-300 dark:border-white/10 dark:bg-white/[0.02] dark:shadow-black/40 hover:dark:shadow-primary/10 hover:dark:border-primary/30"
                   whileHover={{
-                    y: -4,
+                    y: -6,
                     transition: { type: "spring", stiffness: 400, damping: 25 },
                   }}
                 >

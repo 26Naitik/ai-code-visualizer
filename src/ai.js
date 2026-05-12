@@ -1,36 +1,22 @@
-export async function explainCode(code) {
+// src/ai.js
+// Thin adapter layer — delegates to codeAnalyzer.
+// Swap the internals for a real AI/compiler API without touching any component.
 
-  if (typeof code !== "string") {
+import { generateExplanation } from "./utils/codeAnalyzer"
 
-    return ""
-  }
+/**
+ * Returns a structured explanation for the given code and language.
+ * Simulates async latency so the loading state is visible.
+ *
+ * @param {string} code
+ * @param {string} language  — "javascript" | "python" | "java" | "cpp"
+ * @returns {Promise<string>}
+ */
+export async function explainCode(code, language = "javascript", explanationLang = "english") {
+  if (typeof code !== "string") return ""
 
-  await new Promise((resolve) =>
-    setTimeout(resolve, 400)
-  )
+  // Simulate network/AI latency (replace with real API call later)
+  await new Promise((resolve) => setTimeout(resolve, 600))
 
-  return `
-✅ Code Explanation
-
-This function prints "Hello World" in the console.
-
-📌 Line-by-line Explanation:
-
-1. function hello()
-   → Creates a function named hello.
-
-2. console.log("Hello World")
-   → Prints Hello World in browser console.
-
-📊 Time Complexity:
-O(1)
-
-📦 Space Complexity:
-O(1)
-
-⚠️ Common Mistakes:
-- Forgetting parentheses ()
-- Missing semicolon
-- Wrong spelling of console.log
-`
+  return generateExplanation(code, language, explanationLang)
 }
